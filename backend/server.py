@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, EmailStr
@@ -125,6 +125,32 @@ async def stats():
     total = await regs.count_documents({})
     scanned = await regs.count_documents({"status": "scanned"})
     return {"total_whitelist": 61, "total_registered": total, "total_scanned": scanned, "total_pending": total - scanned}
+
+
+async def _require_admin(authorization: str | None) -> None:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing admin token")
+    token = authorization.split(" ", 1)[1].strip()
+    if not await sess.find_one({"token": token}):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+
+
+@api.get("/admin/registrations")
+async def admin_registrations(q: str = "", authorization: str | None = Header(default=None)):
+    await _require_admin(authorization)
+    query: dict[str, Any] = {}
+    if q.strip():
+        needle = q.strip()
+        query = {"$or": [
+            {"name": {"$regex": needle, "$options": "i"}},
+            {"roll_no": {"$regex": needle, "$options": "i"}},
+            {"qr_code_id": {"$regex": needle, "$options": "i"}},
+            {"email": {"$regex": needle, "$options": "i"}},
+            {"phone": {"$regex": needle, "$options": "i"}},
+        ]}
+    cursor = regs.find(query).sort("registered_at", -1).limit(500)
+    items = [public(doc) async for doc in cursor]
+    return {"count": len(items), "registrations": items}
 
 
 app.include_router(api)
