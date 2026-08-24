@@ -73,6 +73,10 @@
 .success-banner h3{font:700 clamp(20px,2.5vw,26px) 'Unbounded';margin:6px 0 6px;color:var(--white);letter-spacing:-.5px}
 .success-banner p{color:var(--muted);font:14px/1.5 'Space Grotesk';margin:0;max-width:420px}
 .success-banner .primary-cta{white-space:nowrap;background:var(--lime);color:var(--ink)}
+.success-banner .link-btn{background:none;border:0;color:var(--lime);text-decoration:underline;padding:0;font:inherit;cursor:pointer}
+.success-banner .link-btn:hover{color:var(--cyan)}
+.digital-ticket .ticket-actions button[data-testid="email-pass-button"]{border-color:rgba(255,255,255,.28);color:var(--white);background:rgba(255,255,255,.06)}
+.digital-ticket .ticket-actions button[data-testid="email-pass-button"]:hover:not(:disabled){background:var(--white);color:var(--ink);border-color:var(--white)}
 
 /* Prominent ticket download CTA */
 .ticket-download-cta{width:100%;margin-top:24px;padding:20px 24px;font-size:13px;justify-content:center;background:linear-gradient(90deg,var(--lime),var(--cyan));color:var(--ink);box-shadow:5px 5px 0 var(--pink)}
