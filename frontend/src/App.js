@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, ArrowRight, CalendarDays, ChevronDown, ChevronRight, Clock3, Copy, DoorOpen, Download, ExternalLink, Instagram, Mail, MapPin, Menu, Radio, Share2, Shield, Sparkles, Ticket, UserPlus, Users, X, Zap } from "lucide-react";
+import { Activity, ArrowRight, CalendarDays, ChevronDown, ChevronRight, Clock3, DoorOpen, Download, ExternalLink, Instagram, Mail, MapPin, Menu, Radio, Shield, Sparkles, Ticket, UserPlus, Users, X, Zap } from "lucide-react";
 import { toPng } from "html-to-image";
 import "@/App.css";
 
@@ -28,7 +28,7 @@ function App() {
     <main className="page-wrap"><AnimatePresence mode="wait"><motion.div key={tab} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: .35 }}>
       {tab === "home" && <Home go={go} openLetter={() => setModal("letter")} />}
       {tab === "agenda" && <Agenda go={go} />}
-      {tab === "join" && <Register onDone={(item) => { setPass(item); localStorage.setItem("frenzy-pass", JSON.stringify(item)); restorePass(); setJustRegistered(true); setNotice("Registration complete — download your ticket below."); go("pass"); }} />}
+      {tab === "join" && <Register onDone={(item) => { setPass(item); localStorage.setItem("frenzy-pass", JSON.stringify(item)); restorePass(); setJustRegistered(true); go("pass"); }} />}
       {tab === "pass" && <Pass pass={pass} onPass={setPass} onNotice={setNotice} hidden={passHidden} onHide={hidePass} onRestore={restorePass} go={go} justRegistered={justRegistered} onSeenRegistered={() => setJustRegistered(false)} />}
       {tab === "contacts" && <Contacts />}
       {tab === "admin" && <Admin isAdmin={isAdmin} onAdmin={() => setAdminOpen(true)} onLogout={() => setIsAdmin(false)} />}
@@ -58,61 +58,32 @@ function Register({ onDone }) { const [form, setForm] = useState({ name: "", rol
 function Pass({ pass: initial, onPass, onNotice, hidden, onHide, onRestore, go, justRegistered, onSeenRegistered }) {
   const [query, setQuery] = useState("");
   const [pass, setPass] = useState(initial);
-  const [busy, setBusy] = useState(null);
-  const [emailState, setEmailState] = useState(initial?.email_sent ? "welcome-sent" : "idle");
+  const [busy, setBusy] = useState(false);
   const ticketRef = useRef(null);
-  const emailedRef = useRef(false);
   const lookup = async (e) => { e.preventDefault(); try { const res = await fetch(`${API}/pass/${encodeURIComponent(query)}`); const data = await res.json(); if (!res.ok) throw new Error(data.detail || data.error); setPass(data.registration); onPass(data.registration); onRestore?.(); } catch { onNotice("No pass found. Try your roll number or Pass ID."); } };
-  const capture = async () => {
-    if (!ticketRef.current) return null;
-    return toPng(ticketRef.current, { pixelRatio: 3, cacheBust: true, backgroundColor: "#0a0a10", filter: (node) => !node.classList || !node.classList.contains("pass-dismiss") });
-  };
   const download = async () => {
-    setBusy("download");
-    try { const url = await capture(); if (!url) return; const a = document.createElement("a"); a.download = `Freshers26-${pass.qr_code_id || pass.roll_no || "pass"}.png`; a.href = url; a.click(); onNotice("Ticket saved as PNG."); onSeenRegistered?.(); }
-    catch { onNotice("Could not export the ticket. Try again."); }
-    finally { setBusy(null); }
-  };
-  const share = async () => {
-    setBusy("share");
+    if (!ticketRef.current) return;
+    setBusy(true);
     try {
-      const url = await capture(); if (!url) return;
-      const blob = await (await fetch(url)).blob();
-      const file = new File([blob], `Freshers26-${pass.qr_code_id || "pass"}.png`, { type: "image/png" });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: "My Freshers '26 Pass", text: `I'm in for Freshers '26! Pass ${pass.qr_code_id || ""}` });
-        onNotice("Shared successfully.");
-      } else {
-        const a = document.createElement("a"); a.download = file.name; a.href = url; a.click();
-        onNotice("Sharing not supported here — downloaded PNG instead.");
-      }
-    } catch (err) { if (err?.name !== "AbortError") onNotice("Could not share. Downloaded PNG instead."); }
-    finally { setBusy(null); }
-  };
-  const emailTicket = async () => {
-    if (!pass || !pass.email) return;
-    if (emailState === "sending") return;
-    setEmailState("sending");
-    try {
-      const url = await capture(); if (!url) throw new Error("capture failed");
-      const res = await fetch(`${API}/email-ticket`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: pass.email, name: pass.name, qr_code_id: pass.qr_code_id, roll_no: pass.roll_no, png_base64: url }) });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.detail || "Email send failed");
-      setEmailState("sent");
-      onNotice(`Ticket emailed to ${pass.email}. Check your inbox.`);
-    } catch (err) {
-      setEmailState("error");
-      onNotice(`Could not email the ticket (${err.message || "try again"}).`);
+      const url = await toPng(ticketRef.current, {
+        pixelRatio: 3,
+        cacheBust: true,
+        backgroundColor: "#0a0a10",
+        filter: (node) => !node.classList || !node.classList.contains("pass-dismiss"),
+      });
+      const a = document.createElement("a");
+      a.download = `Freshers26-${pass.qr_code_id || pass.roll_no || "pass"}.png`;
+      a.href = url;
+      a.click();
+      onNotice("Pass saved to your device.");
+      onSeenRegistered?.();
+    } catch {
+      onNotice("Could not save the pass. Try again.");
+    } finally {
+      setBusy(false);
     }
   };
-  useEffect(() => {
-    if (!justRegistered || !pass || hidden) return;
-    if (emailState === "sending" || emailState === "sent") return;
-    if (emailedRef.current) return;
-    const timer = setTimeout(() => { emailedRef.current = true; emailTicket(); }, 1200);
-    return () => clearTimeout(timer);
-  }, [justRegistered, pass, hidden, emailState]);
-  return <section className="content-page narrow"><PageTitle kicker="IDENTITY CONFIRMED" title="YOUR ENTRY PASS" desc="Show this pass at the gate — save it to your phone or share it with your batchmates." />{pass && !hidden && justRegistered && <motion.div className="success-banner" data-testid="registration-success-banner" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}><div><span className="section-kicker">REGISTRATION CONFIRMED</span><h3>WELCOME TO THE B.COM FAMILY.</h3><p data-testid="email-status-line">{emailState === "sending" ? <>Attaching your ticket PNG and sending to <b>{pass.email}</b>…</> : emailState === "sent" ? <>Ticket <b>+ PNG attachment</b> emailed to <b>{pass.email}</b>. Also save the copy below as a backup.</> : emailState === "welcome-sent" ? <>Confirmation email sent to <b>{pass.email}</b>. Attaching your PNG ticket in a follow-up…</> : emailState === "error" ? <>We couldn&apos;t email the PNG automatically — <button className="link-btn" data-testid="retry-email-button" onClick={emailTicket}>tap to retry</button> or download it below.</> : <>Your ticket is ready — download it as a PNG for your lock screen or WhatsApp before you leave this page.</>}</p></div><button className="primary-cta" data-testid="banner-download-button" onClick={download} disabled={busy === "download"}><Download size={16} /> {busy === "download" ? "SAVING..." : "DOWNLOAD MY TICKET"}</button></motion.div>}<form className="pass-search" onSubmit={lookup}><input data-testid="pass-lookup-input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search roll number or FF-8492" /><button data-testid="pass-lookup-button"><Ticket size={17} /> FIND</button></form>{pass && hidden && <div className="empty-state" data-testid="pass-hidden-state"><Ticket size={32} /><p>Your pass is safely stored.</p><small>It stays saved on our end — reveal it below when you need it at the gate.</small><button className="ghost-cta" style={{ marginTop: 22 }} data-testid="restore-pass-button" onClick={onRestore}>REVEAL MY PASS <ArrowRight size={17} /></button></div>}{pass && !hidden && <><div className="ticket-card digital-ticket" data-testid="entry-pass-card"><button className="pass-dismiss" data-testid="dismiss-pass-button" aria-label="Hide pass" onClick={onHide}><X size={16} /></button><div className="ticket-inner" ref={ticketRef}><span className="foil-strip" /><div className="ticket-top"><span>B.COM ASSOCIATION · GOKUL CAMPUS</span><b className="ticket-badge">FRESHERS &apos;26 · VIP</b><h2>YOU&apos;RE<br /><em>IN.</em></h2><span className="ticket-serial">SERIAL · {pass.qr_code_id || "PENDING"}</span></div><div className="ticket-body"><div><span>ATTENDEE</span><strong data-testid="pass-attendee-name">{pass.name}</strong></div><div><span>ROLL / USN</span><b data-testid="pass-roll">{pass.roll_no}</b></div><div className="ticket-meta"><div><i>EVENT DATE</i><p>01 + 02 SEPT 2026</p></div><div><i>VENUE</i><p>KLE TECH · GOKUL CAMPUS</p></div><div><i>GATES OPEN</i><p>09:00 IST</p></div><div><i>DRESS CODE</i><p>Y2K · INDO-WESTERN</p></div></div><div className="ticket-seal" data-testid="ticket-seal"><span className="seal-ring" /><span className="seal-ring seal-ring-2" /><b>F26</b><small>OFFICIAL PASS</small></div><div className="pass-id ticket-fullrow">PASS ID · #{pass.qr_code_id || "PENDING"}</div></div><div className="ticket-foot"><span><span className="status-dot" />STATUS · CONFIRMED</span><div className="ticket-actions"><button data-testid="copy-pass-button" onClick={() => { navigator.clipboard?.writeText(pass.qr_code_id || ""); onNotice("Pass ID copied to clipboard."); }}><Copy size={14} /> COPY</button><button data-testid="download-pass-button" onClick={download} disabled={busy === "download"}><Download size={14} /> {busy === "download" ? "SAVING..." : "PNG"}</button><button data-testid="email-pass-button" onClick={emailTicket} disabled={emailState === "sending"}><Mail size={14} /> {emailState === "sending" ? "SENDING..." : "EMAIL"}</button><button data-testid="share-pass-button" onClick={share} disabled={busy === "share"}><Share2 size={14} /> {busy === "share" ? "SHARING..." : "SHARE"}</button></div></div></div></div><button className="primary-cta ticket-download-cta" data-testid="ticket-download-cta" onClick={download} disabled={busy === "download"}><Download size={18} /> {busy === "download" ? "SAVING TICKET..." : "DOWNLOAD TICKET AS PNG"}</button></>}{!pass && <div className="empty-state" data-testid="empty-pass-state"><Ticket size={32} /><p>No active pass yet.</p><small>Register first or look up an existing pass above.</small><button className="primary-cta" style={{ marginTop: 22 }} data-testid="empty-pass-register-button" onClick={() => go?.("join")}>REGISTER NOW <ArrowRight size={17} /></button></div>}</section>;
+  return <section className="content-page narrow"><PageTitle kicker="IDENTITY CONFIRMED" title="YOUR ENTRY PASS" desc="Save this pass to your phone — show it at the entrance to get in." />{pass && !hidden && justRegistered && <motion.div className="success-banner" data-testid="registration-success-banner" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}><div><span className="section-kicker">REGISTRATION SUCCESSFUL</span><h3>WELCOME TO THE B.COM FAMILY.</h3><p>Your digital pass is ready. Tap download to save it to your phone.</p></div><button className="primary-cta" data-testid="banner-download-button" onClick={download} disabled={busy}><Download size={16} /> {busy ? "SAVING..." : "DOWNLOAD PASS"}</button></motion.div>}<form className="pass-search" onSubmit={lookup}><input data-testid="pass-lookup-input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search roll number or FF-8492" /><button data-testid="pass-lookup-button"><Ticket size={17} /> FIND</button></form>{pass && hidden && <div className="empty-state" data-testid="pass-hidden-state"><Ticket size={32} /><p>Your pass is safely stored.</p><small>It stays saved on our end — reveal it below when you need it at the gate.</small><button className="ghost-cta" style={{ marginTop: 22 }} data-testid="restore-pass-button" onClick={onRestore}>REVEAL MY PASS <ArrowRight size={17} /></button></div>}{pass && !hidden && <><div className="ticket-card digital-ticket" data-testid="entry-pass-card"><button className="pass-dismiss" data-testid="dismiss-pass-button" aria-label="Hide pass" onClick={onHide}><X size={16} /></button><div className="ticket-inner" ref={ticketRef}><span className="foil-strip" /><div className="ticket-top"><span>B.COM ASSOCIATION · GOKUL CAMPUS</span><b className="ticket-badge">FRESHERS &apos;26 · VIP</b><h2>YOU&apos;RE<br /><em>IN.</em></h2><span className="ticket-serial">SERIAL · {pass.qr_code_id || "PENDING"}</span></div><div className="ticket-body"><div><span>ATTENDEE</span><strong data-testid="pass-attendee-name">{pass.name}</strong></div><div><span>ROLL / USN</span><b data-testid="pass-roll">{pass.roll_no}</b></div><div className="ticket-meta"><div><i>EVENT DATE</i><p>01 + 02 SEPT 2026</p></div><div><i>VENUE</i><p>KLE TECH · GOKUL CAMPUS</p></div><div><i>GATES OPEN</i><p>09:00 IST</p></div><div><i>DRESS CODE</i><p>Y2K · INDO-WESTERN</p></div></div><div className="ticket-seal" data-testid="ticket-seal"><span className="seal-ring" /><span className="seal-ring seal-ring-2" /><b>F26</b><small>OFFICIAL PASS</small></div><div className="pass-id ticket-fullrow">PASS ID · #{pass.qr_code_id || "PENDING"}</div></div><div className="ticket-foot"><span><span className="status-dot" />STATUS · CONFIRMED</span><span className="ticket-foot-hint">Tap download below to save this pass</span></div></div></div><button className="primary-cta ticket-download-cta" data-testid="ticket-download-cta" onClick={download} disabled={busy}><Download size={18} /> {busy ? "SAVING PASS..." : "DOWNLOAD PASS"}</button></>}{!pass && <div className="empty-state" data-testid="empty-pass-state"><Ticket size={32} /><p>No active pass yet.</p><small>Register first or look up an existing pass above.</small><button className="primary-cta" style={{ marginTop: 22 }} data-testid="empty-pass-register-button" onClick={() => go?.("join")}>REGISTER NOW <ArrowRight size={17} /></button></div>}</section>;
 }
 
 function Contacts() { return <section className="content-page"><PageTitle kicker="OPEN CHANNELS" title="THE CREW" desc="Questions, directions, or a last-minute signal? Reach the organizing team." /><div className="crew-grid">{[["AMRUTH P", "GENERAL SECRETARY", "7019475272"], ["GP", "PORTAL + GATE OPS", "9632270887"]].map(([name, role, phone]) => <article className="crew-card" key={name}><div className="avatar">{name.slice(0, 2)}</div><span className="section-kicker">{role}</span><h2>{name}</h2><p>Direct contact for event questions, entry passes, directions, and coordination.</p><a data-testid={`call-${name.toLowerCase().replace(" ", "-")}`} href={`tel:${phone}`}><DoorOpen size={16} /> {phone}</a></article>)}</div><div className="venue-line"><MapPin size={20} /><span>KLE Technological University · Gokul Campus, Hubballi</span><ExternalLink size={16} /></div></section> }
