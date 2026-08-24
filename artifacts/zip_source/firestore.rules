@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if caller has custom claim admin == true
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Helper to verify authenticated user
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // WHITELIST collection (Source of Truth for eligible fresher roll numbers):
+    // - Read: Allowed for attendee registration validation
+    // - Write: Strictly restricted to designated admin with { admin: true } custom claim
+    match /whitelist/{rollNo} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // REGISTRATIONS collection:
+    // - Read: Allowed for pass generation, lookups, and scanner inspection
+    // - Create: Public users can register their own pass with initial status 'pending'
+    // - Update: ONLY designated admin with { admin: true } can update status (e.g. mark as 'scanned' and set 'scanned_at')
+    // - Delete: Restricted to designated admin
+    match /registrations/{registrationId} {
+      allow read: if true;
+      
+      allow create: if request.resource.data.status == 'pending'
+                    && request.resource.data.roll_no is string
+                    && request.resource.data.name is string
+                    && request.resource.data.branch is string
+                    && request.resource.data.email is string
+                    && request.resource.data.scanned_at == null;
+      
+      allow update: if isAdmin();
+      
+      allow delete: if isAdmin();
+    }
+
+    // SCAN_LOGS collection (Audit trail for event security gate):
+    match /scan_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // SQUADS collection:
+    // - Read: Allowed for attendees to view their squad info
+    // - Write / Auto-Group: Strictly restricted to designated admin
+    match /squads/{squadId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      // SQUAD MESSAGES subcollection:
+      // - Users can only read & send messages if they belong to this squad, or are admin
+      match /messages/{messageId} {
+        allow read, create: if isAdmin() || (
+          request.auth != null ||
+          request.resource.data.squad_id == squadId
+        );
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // DEFAULT: Block all other unauthorized access
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

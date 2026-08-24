@@ -1,0 +1,227 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-surface-variant: #353535;
+    --color-on-secondary-fixed-variant: #454747;
+    --color-on-background: #e5e2e1;
+    --color-primary-fixed-dim: #ffb4ab;
+    --color-surface-bright: #393939;
+    --color-secondary: #c6c6c7;
+    --color-on-tertiary-fixed: #1c1b1b;
+    --color-on-tertiary-fixed-variant: #474646;
+    --color-surface-container-high: #2a2a2a;
+    --color-error: #ffb4ab;
+    --color-surface-container-low: #1c1b1b;
+    --color-surface-dim: #131313;
+    --color-tertiary: #c8c6c5;
+    --color-inverse-primary: #c00014;
+    --color-surface-tint: #ffb4ab;
+    --color-secondary-container: #454747;
+    --color-surface-container-lowest: #0e0e0e;
+    --color-primary-fixed: #ffdad6;
+    --color-secondary-fixed: #e2e2e2;
+    --color-inverse-on-surface: #313030;
+    --color-on-primary-container: #fffdff;
+    --color-on-surface: #e5e2e1;
+    --color-tertiary-container: #767575;
+    --color-primary: #ffb4ab;
+    --color-surface: #131313;
+    --color-inverse-surface: #e5e2e1;
+    --color-primary-container: #e61d23;
+    --color-surface-container: #20201f;
+    --color-tertiary-fixed-dim: #c8c6c5;
+    --color-surface-container-highest: #353535;
+    --color-on-secondary-fixed: #1a1c1c;
+    --color-on-error: #690005;
+    --color-outline-variant: #5d3f3c;
+    --color-on-surface-variant: #e7bdb8;
+    --color-on-tertiary-container: #fbfeff;
+    --color-on-tertiary: #313030;
+    --color-on-primary-fixed: #410002;
+    --color-on-secondary: #2f3131;
+    --color-secondary-fixed-dim: #c6c6c7;
+    --color-on-primary: #690006;
+    --color-error-container: #93000a;
+    --color-on-error-container: #ffdad6;
+    --color-on-primary-fixed-variant: #93000c;
+    --color-outline: #ae8883;
+    --color-tertiary-fixed: #e5e2e1;
+    --color-background: #131313;
+    --color-on-secondary-container: #b4b5b5;
+  }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background-color: #131313;
+    color: #e5e2e1;
+    background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.05"/></svg>');
+    overflow-x: hidden;
+  }
+}
+
+/* Typography styles */
+.font-headline-display,
+.font-headline-lg,
+.font-headline-lg-mobile,
+.font-headline-md,
+.font-onomatopoeia,
+.font-display-hero {
+  font-family: 'Anton', sans-serif;
+}
+
+.font-label-bold,
+.font-label-sm {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.font-body-lg,
+.font-body-md {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Distressed Text & Borders */
+.distressed-text {
+  color: transparent;
+  -webkit-text-stroke: 2px #e61d23;
+  background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.3"/></svg>') repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  position: relative;
+}
+
+.distressed-text::after {
+  content: attr(data-text);
+  position: absolute;
+  left: -4px;
+  top: 2px;
+  color: #e61d23;
+  z-index: -1;
+  opacity: 0.5;
+  filter: blur(2px);
+}
+
+.distressed-border {
+  border: 2px solid #e61d23;
+  box-shadow: 4px 4px 0 0 #e61d23;
+}
+
+.brutal-border {
+  border: 2px solid #e61d23;
+  box-shadow: 4px 4px 0px #e61d23;
+}
+
+.brutal-border-white {
+  border: 2px solid #e5e2e1;
+  box-shadow: 4px 4px 0px #e5e2e1;
+}
+
+.faux-border {
+  box-shadow: 2px 2px 0px 0px #e61d23;
+}
+
+.faux-border-white {
+  box-shadow: 2px 2px 0px 0px #fffdff;
+}
+
+.skewed-container {
+  transform: skewY(-2deg);
+}
+
+.unskewed-content {
+  transform: skewY(2deg);
+}
+
+.lightning-bg {
+  background: radial-gradient(circle at top, rgba(230, 29, 35, 0.15) 0%, rgba(19, 19, 19, 1) 70%);
+}
+
+.lightning-divider {
+  height: 20px;
+  background: url("data:image/svg+xml,%3Csvg width='100' height='20' viewBox='0 0 100 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 10L20 0L40 20L60 0L80 20L100 10' stroke='%23e61d23' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") repeat-x center;
+}
+
+/* Scanner Animation */
+.scan-line {
+  animation: scan 2s linear infinite;
+}
+
+@keyframes scan {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+/* Continuous Pass Shine Sweep Animation */
+@keyframes shineSweep {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  30% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
+.animate-shine-sweep {
+  animation: shineSweep 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Soft QR Code Pulsing Glow */
+@keyframes qrGlowPulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(230, 29, 35, 0.4), 0 0 30px rgba(255, 180, 171, 0.2);
+    border-color: #e61d23;
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(230, 29, 35, 0.8), 0 0 50px rgba(255, 180, 171, 0.45);
+    border-color: #ffb4ab;
+  }
+}
+
+.animate-qr-pulse {
+  animation: qrGlowPulse 2.4s ease-in-out infinite;
+}
+
+/* Tab View Transitions */
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Halftone Dot Matrix Accent */
+.comic-halftone-dots {
+  background-image: radial-gradient(rgba(230, 29, 35, 0.35) 1.5px, transparent 1.5px);
+  background-size: 8px 8px;
+}
+
+.comic-halftone-dots-white {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.25) 1.5px, transparent 1.5px);
+  background-size: 8px 8px;
+}
+
+/* Neon Glows / Electric Accents */
+.neon-glow-red {
+  text-shadow: 0 0 12px rgba(230, 29, 35, 0.8), 0 0 24px rgba(230, 29, 35, 0.5);
+}
+
+.neon-glow-cyan {
+  text-shadow: 0 0 10px rgba(230, 29, 35, 0.8);
+}
+
+.neon-glow-pink {
+  text-shadow: 0 0 10px rgba(255, 180, 171, 0.8);
+}

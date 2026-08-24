@@ -1,0 +1,10 @@
+{
+  "name": "Fresher Frenzy - Invite & Entry Pass System",
+  "description": "Comic-themed college fresher party invitation, registration validation against whitelist, VIP QR pass generation, real-time gate scanner entry verification, and auto-grouped balanced Squads with persistent group chat.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
