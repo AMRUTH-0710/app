@@ -1,0 +1,34 @@
+{
+  "summary": "Completed public API regression, production build, and focused scanner UI testing. Scanner navigation, admin login, camera fallback, manual FF-TEST-001 verification, existing navigation, and desktop rendering passed; authenticated state is not restored after reload, blocking the mobile authenticated-layout check.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Authenticated scanner after page reload",
+        "issue": "Admin token is stored in sessionStorage, but App initializes isAdmin only to false and never hydrates it from that token. Reloading the scanner returns to ADMIN ACCESS REQUIRED, so an existing authenticated session cannot continue scanning.",
+        "affected_selectors": ["[data-testid=admin-access-button]", "[data-testid=scanner-login-button]", "[data-testid=manual-scan-input]"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_frenzy_api.py", "/app/test_reports/pytest/iteration_2_results.xml"],
+  "action_items": [
+    "Initialize isAdmin from the existing frenzy_admin_token sessionStorage value (and ideally validate it) so scanner access survives reload.",
+    "Retest authenticated scanner at 390px after the auth hydration fix to verify no horizontal overflow."
+  ],
+  "critical_code_review_comments": [
+    "Frontend auth state is process/UI-local: sessionStorage receives a token on login, but App never reads it on mount, creating a reload-time authorization mismatch.",
+    "Backend registrations and admin sessions remain in process-local dictionaries/sets; this is not durable across restarts or backend replicas and should be addressed before production."
+  ],
+  "updated_files": ["/app/test_reports/iteration_2.json"],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "83% (scanner desktop/auth flow passed; reload persistence failed; mobile authenticated overflow unverified)"},
+  "seed_data_creation": "No new seed data created. Existing demo pass FF-TEST-001 was scanned and now returns already_used in the live in-memory service.",
+  "retest_needed": true,
+  "should_call_test_agent_after_fix": true,
+  "context_for_next_testing_agent": "Public API suite and yarn build pass. UI verified scan nav, admin login, camera unsupported fallback, manual verification, and legacy navigation. On reload after login, scanner is locked because isAdmin is not hydrated from sessionStorage; complete mobile overflow test after fixing that. No APIs were mocked.",
+  "rca of the issue": "AdminModal stores frenzy_admin_token and App sets isAdmin only in the onSuccess callback. App's initial isAdmin state is always false and there is no useEffect reading sessionStorage, so BrowserRouter reload renders Scanner's locked branch even though the token remains available for /api/scan."
+}

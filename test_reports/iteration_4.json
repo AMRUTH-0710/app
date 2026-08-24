@@ -1,0 +1,42 @@
+{
+  "summary": "Iteration-4 retest of the six iteration-3 defect fixes plus full preserved-behavior and backend regression. Backend: 18/18 pytest pass against the public URL (health, root, pass lookup FF-8492/FF-TEST-001, register + duplicate 400 + validation, admin login good/bad, scan auth/valid/already_used/404, stats consistency). Frontend: 5 of 6 fixes verified fixed — (1) duplicate roll 01FM26BCM001 now shows 'This roll number is already registered' in [data-testid=registration-error], stays on /, renders 0 entry-pass-card; happy path with fresh roll TEST-478372 created a real pass; (2) AdminModal with wrong password keeps the modal open, shows admin-login-error 'Access denied', admin-hero absent, and correct creds still log in; (3) desktop 1440 ticket header no longer overlaps — dismiss box x428-464 vs ticket-top label x489-767 (no intersection); (5) admin-stats computes 3 equal columns (296px x3, total 913px inside a 1096px admin-hero next to LOG OUT — no large empty area); (6) Data Layer row now reads 'IN-MEMORY (DEMO)', string 'PERSISTED' gone from the page. Defect 4 (mobile 375x812 hero) is only PARTIALLY fixed and still visually broken. All preserved behaviors pass: brand-tag, exact hero-tagline, countdown-panel label/heading with ticking seconds, nav REGISTER, lineup day1=3/day2=5 with expand+collapse, agenda CTA 'REGISTER NOW', FF-8492 lookup (BHUMIKA V CHALAGERI), dismiss->pass-hidden-state with ZERO /api calls + sessionStorage frenzy-pass-hidden=1 and restore, empty-pass-register-button navigation, admin section toggles, logout -> PORTAL LOCKED, manual scan FF-TEST-001 -> 'Valid entry — welcome Test Pass!'. No console errors other than the expected 400/403 from the negative-path fetches.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/login", "issue": "Still returns 403 for wrong credentials; 401 is the conventional code (unchanged from iteration 3)"},
+      {"endpoint": "all /api endpoints", "issue": "Registrations/sessions remain in module-level dicts (no MongoDB); data lost on restart. Admin UI now honestly reports IN-MEMORY (DEMO)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Home hero (mobile 375x812)", "issue": "Mobile hero fix incomplete. .hero-side-note is now position:static and there is no horizontal document scroll (scrollWidth==clientWidth==375), BUT .hero-stage is still display:flex/flex-direction:row, so the static side-note became a row flex item: it sits BESIDE .hero-copy (side-note x194-489 -> right edge 489 > 375 viewport, clipped by overflow:hidden so it reads 'FRESI'), and it squeezes .hero-copy to 173.8px wide. Consequences: h1 breaks mid-word into two lines that visually collide at line-height .86 ('FRES'/'HERS' overlap), tagline is crammed to 3 lines, and the side-note is NOT below the hero actions (side-note y397 vs hero-pass-button y746). The 'order:3' declaration has no effect in a row flex container. FIX: add .hero-stage{flex-direction:column;align-items:flex-start} (and raise h1 line-height) inside the max-width:760px media block.", "selector": "[data-testid=\"hero-side-note\"] / .hero-stage / .hero-copy h1", "priority": "HIGH"},
+      {"component": "nav-dock vs hero actions (mobile 375x812)", "issue": "The fixed bottom .nav-dock (y735-802) fully covers [data-testid=\"hero-pass-button\"] (y746-795) at initial scroll, so 'GET YOUR PASS' is invisible on first paint. Playwright's auto-scroll click succeeds, so it is a visual obstruction, not a dead control. Suggest extra bottom padding on .hero-stage/.hero-actions on mobile.", "selector": ".nav-dock over [data-testid=\"hero-pass-button\"]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Digital ticket (desktop)", "issues": ["Ticket-top mono label contrast improved (#0b0d12 + light text-shadow) but 11px near-black on the pink/violet gradient is still low-contrast; consider a translucent dark chip behind the label"]},
+      {"screen": "Home hero (mobile)", "issues": ["Headline glyphs from consecutive wrapped lines overlap because line-height .86 is kept while word-break:break-word is now allowed"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_frenzy_api.py", "/app/test_reports/pytest/pytest_results_iter4.xml"],
+  "action_items": [
+    "Mobile hero: collapse .hero-stage to a single column at max-width:760px (flex-direction:column; align-items:flex-start) so .hero-copy gets full width and .hero-side-note renders below the hero actions instead of beside/clipped",
+    "Mobile hero headline: bump line-height (e.g. 1.02) when word-break:break-word is active to stop wrapped lines from overlapping",
+    "Add bottom spacing on mobile hero so the fixed nav-dock does not sit on top of GET YOUR PASS",
+    "Optional: return 401 (not 403) from POST /api/admin/login for bad credentials"
+  ],
+  "critical_code_review_comments": [
+    "/app/frontend/src/App.css mobile block sets .hero-side-note{position:static;order:3} but never changes .hero-stage's flex-direction — order:3 is a no-op in a row container, which is the root cause of the remaining mobile layout defect",
+    "/app/frontend/src/App.js and App.css remain minified single-line-per-component files (~28KB each on 136/112 lines); this is the main reason layout regressions keep slipping through — split into modules and format",
+    "Register()/AdminModal() error handling is now correct (reads FastAPI data.detail, no fabricated pass, no local-demo-admin token) — previously reported blockers are resolved",
+    "/app/backend/server.py still uses module-level dicts (no persistence, unsafe with >1 worker)"
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (18/18 pytest)", "frontend": "~92% (5/6 targeted fixes verified; mobile hero fix incomplete; all preserved behaviors pass)"},
+  "seed_data_creation": "Created registration TEST-478372 (Fresh Tester) via UI happy path. Marked FF-TEST-001 as scanned via manual scanner; re-seed if a pending pass is needed. Stats at time of test: total 8 / admitted 3 / pending 5.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@frenzy.edu / frenzy2024 (from /app/memory/test_credentials.md) — verified working on API and UI",
+  "context_for_next_testing_agent": "Backend suite /app/backend/tests/test_frenzy_api.py is green (18/18). Frontend testids: nav buttons are `${id}-nav-button` (home/agenda/join/pass/scan/contacts), lineup rows are `lineup-row-day1-*`/`lineup-row-day2-*`, admin entry is `admin-access-button`. Only open frontend defect is the mobile (<=760px) hero layout: .hero-stage stays flex-row so hero-side-note is clipped beside a 174px hero-copy; verify by asserting hero-side-note.y > hero-pass-button.y and hero-copy width ~335px at 375x812.",
+  "rca_of_the_issue": "Mobile hero: the fix changed .hero-side-note to position:static and added order:3, but .hero-stage (which is the direct parent and is display:flex;flex-direction:row) was not collapsed to a column at <=760px. A static side-note therefore becomes a second row flex item: it takes 295px of the 335px content box, shrinking .hero-copy to 173.8px and overflowing to x=489 where .app-shell/.hero-stage overflow:hidden clips it. Document-level horizontal scroll is gone (the earlier symptom), which is why the viewport check passes while the hero is still visually broken."
+}

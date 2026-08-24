@@ -1,0 +1,27 @@
+{
+  "summary": "Frontend-only retest of the mobile hero CSS remediation (iteration-4 defect 4) plus smoke of previously-passing mobile/desktop items. ALL 6 mobile hero acceptance criteria PASS at 375x812: (a) document scrollWidth==clientWidth==375 (no horizontal scroll); (b) .hero-copy width now 335px (= content box), previously 174px; (c) [data-testid=hero-side-note] top=736 > [data-testid=hero-pass-button] bottom=686 -> side note renders BELOW hero actions, position:static, right edge 355 <= 375 (not clipped); (d) .hero-stage is now display:flex/flex-direction:column, h1 computed line-height 48.75px with font-size 48.75px (=1.0) and the two h1 spans do not overlap (FRESHERS 222-368 / '26 320-... measured per-span, no vertical intersection); (e) hero-tagline fully readable, scrollWidth==clientWidth==335, scrollHeight==clientHeight==44, exact text 'Two Days, One Campus, New Faces, New Journey, Join B.Com Family.'; (f) hero-pass-button top=637 < nav-dock top=735, fully visible on initial paint. Mobile smoke: brand-tag visible, countdown renders live values (07 DAYS / 15 HOURS / 26 MIN / 08 SEC), nav dock shows ORBIT|LINEUP|REGISTER|PASS|SCAN|CREW, and Register happy path at mobile with fresh roll TEST-240239 created a real entry-pass-card (pass-roll matches). Desktop 1440x900 smoke: hero tagline exact, countdown-panel heading 'THE WAIT IS ALMOST OVER', duplicate roll 01FM26BCM001 -> registration-error 'This roll number is already registered', FF-8492 lookup -> BHUMIKA V CHALAGERI with dismiss button (x429-464) not overlapping ticket-top label (x489-767), AdminModal wrong password -> admin-login-error 'Access denied' then correct creds log in, admin-stats grid = 296.27px x3 (3 equal columns), Data Layer reads 'IN-MEMORY (DEMO)' and 'PERSISTED' absent. Only console errors were the expected 400 (duplicate register) and 403 (wrong admin creds) from negative paths. No code changes made by me.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/login", "issue": "Still returns 403 for wrong credentials (401 conventional). Carried over from iteration 3/4; no backend regression run this iteration per request."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Home hero @375x812", "issues": ["Cosmetic only: the outline h1 still breaks mid-word ('FRESHER' / 'S') because overflow-wrap:anywhere + word-break:break-word is applied at 13vw. Reducing the mobile clamp max (e.g. clamp(38px,11vw,60px)) or using hyphens/nowrap on the word would render 'FRESHERS' on one line. Does not overlap or clip.", "Minor: the hero-side-note badge (top 736) sits under the fixed nav-dock band (735-802) on initial paint; it becomes fully readable after a small scroll, so not blocking."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_5.json"],
+  "action_items": ["Optional polish: avoid mid-word break of 'FRESHERS' in the mobile h1 (lower vw clamp or hyphens)."],
+  "critical_code_review_comments": ["Duplicate @media(max-width:760px) blocks exist in App.css (minified block at line 2 and the Round-1 block at line 92) with conflicting .hero-stage padding declarations; cascade currently resolves correctly but consolidating the two blocks would prevent future regressions."],
+  "updated_files": [],
+  "success_rate": {"backend": "not retested this iteration", "frontend": "100% of requested checks passed (mobile hero 6/6, mobile smoke 5/5, desktop smoke 7/7)"},
+  "seed_data_creation": "Created one mobile registration TEST-240239 (Mobile QA) via the public register flow; in-memory store, cleared on backend restart.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@frenzy.edu / frenzy2024 (from /app/memory/test_credentials.md) - works",
+  "context_for_next_testing_agent": "Mobile hero (iteration-4 HIGH defect) is now fully fixed and verified; only a cosmetic mid-word break of the FRESHERS h1 and the side-note badge sitting under the nav-dock on initial paint remain, both non-blocking. Backend regression from iteration 4 (18/18 pytest) was not re-run because only App.css changed; rerun /app/backend/tests if backend code changes.",
+  "rca_of_the_issue": "Iteration-4 failure root cause was .hero-stage remaining display:flex/row so the newly static .hero-side-note became a sibling row flex item squeezing .hero-copy to 174px. The new CSS adds .hero-stage{flex-direction:column;align-items:flex-start;padding:60px 0 140px} plus .hero-copy{width:100%} and h1 line-height:1, which stacks the side note below the actions and restores full content width - confirmed by computed styles and rect measurements."
+}

@@ -1,0 +1,51 @@
+{
+  "summary": "Round 1 UI refresh verified end-to-end. Backend: 18/18 pytest checks pass against the public URL (health, root, pass lookup incl. FF-8492/FF-TEST-001, register + duplicate + validation, admin login (good/bad), scan auth 401 + valid/already_used/404, stats consistency). Frontend: every requested data-testid assertion passed — brand-tag (B.COM ASSOCIATION x GOKUL CAMPUS), exact hero-tagline, FRESHERS '26 headline, hero-side-note COUNTDOWN + FRESHERS '26 badge (no FREQUENCY/2026), countdown-panel label 'COUNTDOWN · FRESHERS 26' + 'THE WAIT IS ALMOST OVER' with seconds ticking and day/hour/minute values matching the 2026-09-01T09:00 target, nav label REGISTER -> 'REGISTER FOR FRESHERS 26' page, lineup day1 3 rows / day2 5 rows expand+collapse with chevron rotation, agenda CTA 'REGISTER NOW', digital ticket for FF-8492 with attendee/roll/all 4 meta rows/foil strip/QR, copy toast, dismiss -> pass-hidden-state with ZERO network calls (sessionStorage frenzy-pass-hidden=1) persisting across nav and restore returning identical data, empty-pass-state REGISTER NOW navigation, admin login modal -> admin-hero with stats 4/1/3 from /api/stats, all 3 expandable sections toggling, logout locking the portal, manual scan of FF-8492 returning 'Valid entry', guest scanner locked, and no console errors. Real defects found: registration failures are silently swallowed into a fake local pass, and the mobile (375px) hero overflows/overlaps.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/login", "issue": "Returns 403 for wrong credentials; 401 is the conventional code for failed authentication"},
+      {"endpoint": "all /api endpoints", "issue": "All registrations live in an in-memory dict in server.py (no MongoDB). Every backend restart/hot-reload wipes real registrations while the admin panel still reports 'Database: PERSISTED'"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Home hero (mobile 375x812)", "issue": "Hero content overflows the viewport and is clipped: .hero-copy measures 384px wide with right edge at 404px vs 375px viewport (app-shell overflow:hidden hides it). Result: headline reads 'FRESHER', tagline is cut at 'New Jour', eyebrow cut at 'KLE TECH · H'. Root cause: unbreakable 'FRESHERS' word at clamp(56px,10vw,150px) sets a min-content width larger than the padded container.", "selector": ".hero-copy / [data-testid=\"hero-tagline\"]", "priority": "HIGH"},
+      {"component": "Home hero side note (mobile)", "issue": "Absolutely positioned [data-testid=\"hero-side-note\"] (x166-355, y610-706) sits on top of the full-width GET YOUR PASS button (x20-404, y611-660), making the button label unreadable. Click still registers, so it is visual obstruction, not dead control.", "selector": "[data-testid=\"hero-side-note\"] over [data-testid=\"hero-pass-button\"]", "priority": "HIGH"},
+      {"component": "Digital ticket header", "issue": "Dismiss control overlaps the ticket top label — dismiss-pass-button box (x672-708) intersects '.ticket-top > span' (x689-967), hiding the first characters of 'B.COM ASSOCIATION · GOKUL CAMPUS'.", "selector": "[data-testid=\"dismiss-pass-button\"]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Registration error handling", "issue": "Duplicate/invalid registration is silently treated as success. Backend correctly returns 400 ('This roll number is already registered'), but Register()'s catch block fabricates a local pass (random FF-xxxx) whenever name/roll/email/gender are filled and navigates to the ticket. Verified: re-submitting an existing roll produced no [data-testid=\"registration-error\"] and rendered an entry-pass-card that does not exist on the backend. Also the error path reads data.error while FastAPI returns data.detail, so genuine messages would never surface.", "affected_selectors": ["[data-testid=\"registration-submit-button\"]", "[data-testid=\"registration-error\"]", "[data-testid=\"entry-pass-card\"]"]},
+      {"flow": "Admin auth fallback", "issue": "AdminModal falls back to a fake token 'local-demo-admin' whenever /api/admin/login errors, granting client-side admin UI without a server session; subsequent /api/scan calls would 401 and only show the raw detail string.", "affected_selectors": ["[data-testid=\"admin-submit-button\"]"]},
+      {"flow": "Pass persistence after reload", "issue": "A pass found via lookup is kept only in React state (localStorage is written on registration only), so a full browser reload drops it and shows empty-pass-state. Nav-level persistence of the hidden flag works as specified.", "affected_selectors": ["[data-testid=\"pass-lookup-button\"]", "[data-testid=\"empty-pass-state\"]"]}
+    ],
+    "design_issues": [
+      {"screen": "Digital ticket", "issues": ["Small mono labels ('B.COM ASSOCIATION · GOKUL CAMPUS', 'SERIAL · FF-8492') use color #090a0f on the pink/violet gradient — very low contrast at 11px", "'YOU'RE IN.' headline is also near-black on the gradient and reads as a shadow"]},
+      {"screen": "Admin dashboard (desktop 1920)", "issues": ["3 stat cards wrap 2 + 1 leaving a large empty right half of .admin-hero; grid should be 3 columns or flexible"]},
+      {"screen": "Lineup (desktop)", "issues": ["OFFICIAL THEME panel has a large empty lower area next to the 3-row day1 timeline"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_frenzy_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Register(): stop fabricating a local pass on API failure — surface data.detail (FastAPI) in [data-testid=\"registration-error\"] and keep the user on the form for 400/422 responses",
+    "AdminModal(): remove the 'local-demo-admin' fallback so admin state always reflects a real server token",
+    "Fix mobile hero: allow the FRESHERS headline to shrink/wrap (word-break/overflow-wrap or smaller clamp min) so hero-copy fits within the 375px viewport, and reposition/hide .hero-side-note below the hero actions so it stops covering GET YOUR PASS",
+    "Offset the ticket dismiss button (or pad .ticket-top) so it no longer covers the association label; raise contrast of ticket-top mono text",
+    "Consider persisting registrations in MongoDB (currently in-memory dict; data lost on restart) or update the admin 'Database: PERSISTED' claim",
+    "Make .admin-stats a 3-column responsive grid"
+  ],
+  "critical_code_review_comments": [
+    "/app/frontend/src/App.js Register(): the try/catch fallback masks all backend validation errors and issues client-side pass IDs that gate staff cannot verify — highest-priority fix",
+    "/app/frontend/src/App.js reads `data.error` for API errors, but the backend always returns `detail`; every error message path is dead code",
+    "/app/backend/server.py stores registrations/sessions in module-level dicts — no persistence, no multi-worker safety",
+    "/app/frontend/src/App.css is a single ~90-column-wide minified line and App.js packs whole components onto single lines; both are effectively unreviewable and should be split/formatted",
+    "Dead code: tab 'gate' navigates to /gate-display but no view renders for it, and the router defines no <Routes>"
+  ],
+  "updated_files": ["/app/backend/tests/test_frenzy_api.py"],
+  "success_rate": {"backend": "100% (18/18 pytest)", "frontend": "~90% (all requested Round-1 assertions passed; registration error handling + mobile hero layout failed)"},
+  "seed_data_creation": "Created TEST_ registrations via API/UI (TEST-<uuid>, TEST-UI-60378). NOTE: the manual scanner test marked seeded pass FF-8492 status=scanned; re-seed/reset if a pending FF-8492 is needed.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@frenzy.edu / frenzy2024 (from /app/memory/test_credentials.md) — works on both API and UI",
+  "context_for_next_testing_agent": "Backend regression suite is /app/backend/tests/test_frenzy_api.py (pytest, resolves BASE_URL from /app/frontend/.env). All Round-1 UI selectors listed in the review request exist and pass, including dismiss/restore with no backend call (sessionStorage 'frenzy-pass-hidden'). Retest focus after fixes: (1) duplicate roll registration must show registration-error and NOT render entry-pass-card, (2) mobile 375px hero clipping/overlap of hero-side-note vs hero-pass-button, (3) ticket header overlap/contrast. Note FF-8492 may already be status=scanned.",
+  "rca_of_the_issue": "Silent-success registration: Register()'s catch block builds `local = {...form, qr_code_id: FF-random}` and calls onDone whenever the four required fields are non-empty, so a legitimate 400 from POST /api/register (duplicate roll) is converted into a locally minted ticket; additionally `data.error` never exists on FastAPI error bodies (`detail`), so the intended error message is unreachable. Mobile hero clipping: .home-view padding leaves ~335px usable, but .hero-copy's min-content width (driven by the single unbreakable 'FRESHERS' word at 56px) is 384px, overflowing the 375px viewport where .app-shell{overflow:hidden} clips the text; .hero-side-note is position:absolute right/bottom:12% and lands on top of the mobile full-width .hero-actions button."
+}
